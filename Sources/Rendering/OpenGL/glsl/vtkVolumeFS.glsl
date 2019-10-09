@@ -735,51 +735,60 @@ void applyBlend(vec3 posIS, vec3 endIS, float sampleDistanceIS, vec3 tdims)
     gl_FragData[0] = getColorForValue(sum, posIS, tstep);
   #endif
   #if vtkBlendMode == 4 // MIDA
-      // MAXIMUM_INTENSITY_BLEND || MINIMUM_INTENSITY_BLEND
-      // Find maximum/minimum intensity along the ray.
+      //TODO ERIC CREATE MIDA FUNCTIONALITY
+  // now map through opacity and color
+  tColor = getColorForValue(tValue, posIS, tstep);
 
-      // Define the operation we will use (min or max)
-      #if vtkBlendMode == 4
-      #define OP max
-      #endif
+  // handle very thin volumes
+  if (raySteps <= 1.0)
+  {
+    tColor.a = 1.0 - pow(1.0 - tColor.a, raySteps);
+    gl_FragData[0] = tColor;
+    return;
+  }
 
-    // If the clipping range is shorter than the sample distance
-    // we can skip the sampling loop along the ray.
-    if (raySteps <= 1.0)
-    {
-      gl_FragData[0] = getColorForValue(tValue, posIS, tstep);
-      return;
-    }
+  tColor.a = 1.0 - pow(1.0 - tColor.a, jitter);
+  color = vec4(tColor.rgb*tColor.a, tColor.a);
+  posIS += (jitter*stepIS);
 
-    vec4 value = tValue;
-    posIS += (jitter*stepIS);
-
-    // Sample along the ray until MaximumSamplesValue,
-    // ending slightly inside the total distance
-    for (int i = 0; i < //VTK::MaximumSamplesValue ; ++i)
-    {
-      // If we have reached the last step, break
+  for (int i = 0; i < //VTK::MaximumSamplesValue ; ++i)
+  {
       if (stepsTraveled + 1.0 >= raySteps) { break; }
 
       // compute the scalar
       tValue = getTextureValue(posIS);
 
-      // Update the maximum value if necessary
-      value = OP(tValue, value);
+      // now map through opacity and color
+      tColor = getColorForValue(tValue, posIS, tstep);
 
-      // Otherwise, continue along the ray
+      float mix = (1.0 - color.a);
+
+      // this line should not be needed but nvidia seems to not handle
+      // the break correctly on windows/chrome 58 angle
+      //mix = mix * sign(max(raySteps - stepsTraveled - 1.0, 0.0));
+
+      color = color + vec4(tColor.rgb*tColor.a, tColor.a)*mix;
       stepsTraveled++;
       posIS += stepIS;
+      if (color.a > 0.99) { color.a = 1.0; break; }
     }
 
-    // Perform the last step along the ray using the
-    // residual distance
+  if (color.a < 0.99 && (raySteps - stepsTraveled) > 0.0)
+  {
     posIS = endIS;
-    tValue = getTextureValue(posIS);
-    value = OP(tValue, value);
 
-    // Now map through opacity and color
-    gl_FragData[0] = getColorForValue(value, posIS, tstep);
+    // compute the scalar
+    tValue = getTextureValue(posIS);
+
+    // now map through opacity and color
+    tColor = getColorForValue(tValue, posIS, tstep);
+    tColor.a = 1.0 - pow(1.0 - tColor.a, raySteps - stepsTraveled);
+
+    float mix = (1.0 - color.a);
+    color = color + vec4(tColor.rgb*tColor.a, tColor.a)*mix;
+  }
+
+  gl_FragData[0] = vec4(color.rgb/color.a, color.a);
   #endif
 }
 
