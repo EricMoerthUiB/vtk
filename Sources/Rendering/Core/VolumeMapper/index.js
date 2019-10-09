@@ -45,6 +45,10 @@ function vtkVolumeMapper(publicAPI, model) {
     publicAPI.setBlendMode(BlendMode.AVERAGE_INTENSITY_BLEND);
   };
 
+  publicAPI.setBlendModeToMidaShading = () => {
+    publicAPI.setBlendMode(BlendMode.MIDA_SHADING);
+  };
+
   publicAPI.getBlendModeAsString = () =>
     macro.enumToString(BlendMode, model.blendMode);
 }

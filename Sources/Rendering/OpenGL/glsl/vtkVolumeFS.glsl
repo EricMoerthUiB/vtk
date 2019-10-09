@@ -734,6 +734,53 @@ void applyBlend(vec3 posIS, vec3 endIS, float sampleDistanceIS, vec3 tdims)
 
     gl_FragData[0] = getColorForValue(sum, posIS, tstep);
   #endif
+  #if vtkBlendMode == 4 // MIDA
+      // MAXIMUM_INTENSITY_BLEND || MINIMUM_INTENSITY_BLEND
+      // Find maximum/minimum intensity along the ray.
+
+      // Define the operation we will use (min or max)
+      #if vtkBlendMode == 4
+      #define OP max
+      #endif
+
+    // If the clipping range is shorter than the sample distance
+    // we can skip the sampling loop along the ray.
+    if (raySteps <= 1.0)
+    {
+      gl_FragData[0] = getColorForValue(tValue, posIS, tstep);
+      return;
+    }
+
+    vec4 value = tValue;
+    posIS += (jitter*stepIS);
+
+    // Sample along the ray until MaximumSamplesValue,
+    // ending slightly inside the total distance
+    for (int i = 0; i < //VTK::MaximumSamplesValue ; ++i)
+    {
+      // If we have reached the last step, break
+      if (stepsTraveled + 1.0 >= raySteps) { break; }
+
+      // compute the scalar
+      tValue = getTextureValue(posIS);
+
+      // Update the maximum value if necessary
+      value = OP(tValue, value);
+
+      // Otherwise, continue along the ray
+      stepsTraveled++;
+      posIS += stepIS;
+    }
+
+    // Perform the last step along the ray using the
+    // residual distance
+    posIS = endIS;
+    tValue = getTextureValue(posIS);
+    value = OP(tValue, value);
+
+    // Now map through opacity and color
+    gl_FragData[0] = getColorForValue(value, posIS, tstep);
+  #endif
 }
 
 //=======================================================================

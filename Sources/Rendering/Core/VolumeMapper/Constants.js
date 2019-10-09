@@ -3,6 +3,7 @@ export const BlendMode = {
   MAXIMUM_INTENSITY_BLEND: 1,
   MINIMUM_INTENSITY_BLEND: 2,
   AVERAGE_INTENSITY_BLEND: 3,
+  MIDA_SHADING: 4,
 };
 
 export default {
